@@ -1,0 +1,8 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item><item name="android:colorAccent">#FF008C</item>
+        <item name="android:windowLightStatusBar">false</item><item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item><item name="android:windowBackground">#100713</item>
+    </style>
+    <string name="accessibility_description">BodyBlock draws censor masks over your selected app and uses window bounds to align them. It does not read typed text, perform gestures, or upload screen content. Enable only when you want live app filtering.</string>
+</resources>
