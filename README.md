@@ -71,3 +71,7 @@ adb -s YOUR_TEST_EMULATOR shell am instrument -w dev.bodyblock.prototype.test/an
 Run device tests only on a disposable test emulator: the live-flow test enables this application's Accessibility service there. The test APK contains a separate gallery with a public NASA image to exercise actual cross-app capture, alignment and touch-through behaviour. Screenshots are written to the target application's external files directory.
 
 See [VALIDATION.md](VALIDATION.md) for the observed results and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependencies and test-image attribution.
+
+### Detection quality
+
+Settings now separates **Detection quality** (Fast / Detailed) from **Scan frequency**. Detailed is the default and scans overlapping screen sections to improve small-part detection, at higher processing cost. Fast uses one whole-screen pass. Restart protection after changing quality. The model is still NudeNet 320n; confidence scores are not calibrated probabilities.

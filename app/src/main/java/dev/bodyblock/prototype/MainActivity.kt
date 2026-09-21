@@ -126,8 +126,9 @@ class MainActivity: Activity() {
             ids.forEach { id -> Ui.toggle(panel,Categories.labels[id],id in c.enabled) { on -> change { it.copy(enabled=if(on) it.enabled+id else it.enabled-id) } } }
         }
         val performance=Ui.card(content,"DETECTION & PERFORMANCE")
-        Ui.select(performance,"Performance preset",listOf("Low","Medium","High","Ultra"),c.preset) { v -> change { it.copy(preset=v) } }
-        performance.addView(Ui.text(this,"Presets change capture size and scan frequency. Restart live protection after changing capture size.",12f,Ui.muted))
+        Ui.select(performance,"Scan frequency",listOf("Low","Medium","High","Ultra"),c.preset) { v -> change { it.copy(preset=v) } }
+        performance.addView(Ui.text(this,"Higher scan frequency uses more battery. Detailed quality adds overlapping scans for smaller parts. Restart protection after changing detection quality.",12f,Ui.muted))
+        Ui.select(performance,"Detection quality",listOf("Fast","Detailed"),c.quality) { v -> change { it.copy(quality=v) } }
         Ui.slider(performance,"Confidence %",c.confidence,10,95) { v -> change { it.copy(confidence=v) } }
         Ui.slider(performance,"Mask padding %",c.padding,0,50) { v -> change { it.copy(padding=v) } }
         Ui.toggle(performance,"Browser diagnostics",c.diagnostics) { v -> change { it.copy(diagnostics=v) } }

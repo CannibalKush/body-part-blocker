@@ -19,6 +19,23 @@ class DetectionMathTest {
         raw[4][0]=.2f; raw[4][1]=.9f; raw[0][1]=Float.NaN
         assertTrue(DetectionMath.decode(raw,320,320,.3f).isEmpty())
     }
+    @Test fun overlappingPartsSurviveWhileDuplicateTilesMerge() {
+        val box=Box(0f,0f,100f,100f,2,.9f)
+        val result=DetectionMath.suppress(listOf(box,box.copy(score=.8f),box.copy(category=3)))
+        assertEquals(setOf(2,3),result.map { it.category }.toSet())
+        assertEquals(2,result.size)
+    }
+    @Test fun cropsCoverTallAndWideScreensWithOverlap() {
+        for((w,h) in listOf(1080 to 2340,2340 to 1080)) {
+            val crops=DetectionMath.crops(w,h)
+            assertTrue(crops.size<=6)
+            val axis=if(h>w) 1 else 0
+            assertEquals(0,crops.first()[axis])
+            assertEquals(maxOf(w,h),crops.last()[axis]+minOf(w,h))
+            crops.zipWithNext().forEach { (a,b) -> assertTrue(b[axis]<a[axis]+minOf(w,h)) }
+        }
+        assertTrue(DetectionMath.crops(320,320).isEmpty())
+    }
     @Test fun trackingCountsEncountersRatherThanFrames() {
         val t=Tracker(); val box=Box(10f,10f,110f,110f,1,.9f)
         val first=t.update(listOf(box)); val second=t.update(listOf(box.copy(left=15f)))

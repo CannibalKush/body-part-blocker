@@ -12,6 +12,17 @@ data class Box(val left: Float, val top: Float, val right: Float, val bottom: Fl
 }
 
 object DetectionMath {
+    // Square crops preserve detail on tall screens; overlap protects crop boundaries.
+    fun crops(width: Int, height: Int): List<IntArray> {
+        val side=min(width,height)
+        if(side<=0 || max(width,height)<=side*1.2f) return emptyList()
+        val length=max(width,height)
+        val count=ceil((length-side)/(side*.75f)).toInt().coerceIn(1,5)
+        return (0..count).map { i ->
+            val offset=((length-side).toLong()*i/count).toInt()
+            if(height>width) intArrayOf(0,offset,side,side) else intArrayOf(offset,0,side,side)
+        }
+    }
     fun decode(output: Array<FloatArray>, width: Int, height: Int, threshold: Float): List<Box> {
         require(output.size == 22) { "Unexpected model output: ${output.size} channels" }
         val scale = max(width,height)/320f
@@ -26,9 +37,12 @@ object DetectionMath {
             val box=Box((cx-w/2).coerceIn(0f,width.toFloat()),(cy-h/2).coerceIn(0f,height.toFloat()),(cx+w/2).coerceIn(0f,width.toFloat()),(cy+h/2).coerceIn(0f,height.toFloat()),category,score)
             if(box.width>1 && box.height>1) candidates.add(box)
         }
+        return suppress(candidates)
+    }
+    fun suppress(candidates: List<Box>): List<Box> {
         val selected=ArrayList<Box>()
         for(b in candidates.sortedByDescending { it.score }) {
-            if(selected.none { it.iou(b)>0.45f }) selected.add(b)
+            if(selected.none { it.category==b.category && it.iou(b)>0.45f }) selected.add(b)
             if(selected.size>=100) break
         }
         return selected

@@ -68,3 +68,13 @@ The read-only `scripts/check-capture-buffer.py --serial SERIAL --adb PATH` check
 Replaced the text toggle with Yes / No / Part. Legacy boolean preferences and profiles migrate to the matching mode. Part uses the shared renderer for capture, browser, and exports, with detector confidence as a percentage; eye landmarks omit confidence because none is supplied. Reverse mode has no individual masked category, so Part adds no label there.
 
 Debug APK build, JVM tests, lint, and a dedicated emulator check passed. The check covers legacy preference migration, profile round-trip, category/confidence labels, and differing rendered pixels for all three modes.
+
+## Detection quality improvements (0.1.3)
+
+Detailed (default) combines a full-frame pass with overlapping square crops (at most six extra passes). Fast keeps a single pass. Crop results map back into screen coordinates and same-category duplicates are merged; different categories no longer suppress each other. Capture width is selected by quality (640 Fast / 1024 Detailed), independently of scan frequency. Restart live protection after changing quality.
+
+Eye inference waits at most 500 ms, retains its own bitmap until completion, and does not queue additional requests while busy. Failure or timeout preserves successful body detections. No stale eye coordinates are reused.
+
+On the emulator, a public astronaut fixture inset into a 640x1400 canvas yielded face confidence 0.224 in Fast versus 0.706 in Detailed (31 vs 110 ms, one warmed measurement). This is a targeted regression example, not an accuracy benchmark or phone latency claim. The ten-test instrumentation suite, five JVM tests, build and lint passed; the quality test additionally checks that a pending eye task preserves body detections.
+
+The model remains 320n. A larger model, calibrated per-category thresholds, and temporal persistence require broader labelled evaluation before selecting defaults. The previously reported 16 KB native-library compatibility warning remains unresolved in this build.
