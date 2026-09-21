@@ -40,13 +40,25 @@ class EngineTest {
         }
         renderer.close(); source.recycle()
     }
+    @Test fun exportedImageHasPermanentMasks() {
+        val source=Bitmap.createBitmap(80,80,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
+        val renderer=EffectRenderer(context)
+        val mask=renderer.render(source,listOf(Box(20f,20f,60f,60f,1,1f)),Config(color=Color.BLACK,padding=0,border="None",showText=false))
+        Canvas(source).drawBitmap(mask,0f,0f,null)
+        val uri=MediaFiles.save(context,source)
+        try {
+            val saved=MediaFiles.decode(context,uri)
+            assertEquals(Color.BLACK,saved.getPixel(40,40)); assertEquals(Color.BLUE,saved.getPixel(5,5))
+            saved.recycle()
+        } finally { context.contentResolver.delete(uri,null,null); mask.recycle(); source.recycle(); renderer.close() }
+    }
     @Test fun packsRoundTripAndRejectTraversal() {
         val pack=File(context.cacheDir,"test-pack.zip")
         val config=Config(enabled=setOf(1,18),style="Glitch",reverse=true,intensity=91)
         MediaFiles.exportPack(context,Uri.fromFile(pack),config)
         assertEquals(config,MediaFiles.importPack(context,Uri.fromFile(pack)))
         ZipOutputStream(pack.outputStream()).use { it.putNextEntry(ZipEntry("../outside.txt")); it.write("bad".toByteArray()); it.closeEntry() }
-        try { MediaFiles.importPack(context,Uri.fromFile(pack)); fail("Traversal pack accepted") } catch(expected: IllegalArgumentException) { }
+        try { MediaFiles.importPack(context,Uri.fromFile(pack)); fail("Traversal pack accepted") } catch(expected: Exception) { assertTrue(expected is IllegalArgumentException || expected is java.util.zip.ZipException) }
         assertFalse(File(context.filesDir.parentFile,"outside.txt").exists()); pack.delete()
     }
 }

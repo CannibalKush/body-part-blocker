@@ -32,7 +32,7 @@ class Detector(context: Context): AutoCloseable {
             }
         }
         if(18 in config.enabled) {
-            val faceDetector=eyes ?: FaceDetection.getClient(FaceDetectorOptions.Builder().setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST).setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL).build()).also { eyes=it }
+            val faceDetector=eyes ?: FaceDetection.getClient(FaceDetectorOptions.Builder().setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE).setMinFaceSize(.05f).setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL).build()).also { eyes=it }
             val faces=Tasks.await(faceDetector.process(InputImage.fromBitmap(bitmap,0)),3,TimeUnit.SECONDS)
             for(face in faces) for(type in listOf(FaceLandmark.LEFT_EYE,FaceLandmark.RIGHT_EYE)) {
                 val p=face.getLandmark(type)?.position ?: continue

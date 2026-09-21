@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application><activity android:name="dev.bodyblock.prototype.TestGalleryActivity" android:label="BodyBlock Test Gallery" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" /></application>
+</manifest>

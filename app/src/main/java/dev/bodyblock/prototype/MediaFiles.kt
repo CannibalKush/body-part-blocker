@@ -27,7 +27,11 @@ object MediaFiles {
         val uri=resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values) ?: error("Cannot create output image")
         try {
             resolver.openOutputStream(uri)!!.use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) { "Encoding failed" } }
-            resolver.update(uri,ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING,0) },null,null)
+            val checkBounds=BitmapFactory.Options().apply { inJustDecodeBounds=true }
+            resolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it,null,checkBounds) }
+            check(checkBounds.outWidth==bitmap.width && checkBounds.outHeight==bitmap.height) { "Output verification failed" }
+            decode(context,uri,64).recycle() // Decode, not just the header, before permitting source deletion.
+            check(resolver.update(uri,ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING,0) },null,null)==1) { "Output publication failed" }
             return uri
         } catch(e: Exception) { resolver.delete(uri,null,null); throw e }
     }

@@ -10,7 +10,15 @@ class MaskView(context: Context): View(context) {
     var bitmap: Bitmap?=null
         set(value) { val old=field; field=value; invalidate(); if(old!==value) old?.recycle() }
     var destination=RectF()
-    override fun onDraw(canvas: Canvas) { super.onDraw(canvas); bitmap?.let { if(!it.isRecycled) canvas.drawBitmap(it,null,destination,Paint(Paint.FILTER_BITMAP_FLAG)) } }
+    private val bitmapPaint=Paint(Paint.FILTER_BITMAP_FLAG)
+    private val location=IntArray(2)
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        getLocationOnScreen(location)
+        canvas.save(); canvas.translate(-location[0].toFloat(),-location[1].toFloat())
+        bitmap?.let { if(!it.isRecycled) canvas.drawBitmap(it,null,destination,bitmapPaint) }
+        canvas.restore()
+    }
 }
 
 class MaskAccessibilityService: AccessibilityService() {
@@ -22,7 +30,9 @@ class MaskAccessibilityService: AccessibilityService() {
         if(LiveState.active && CaptureService.targetPackage!=null && foregroundPackage()!=CaptureService.targetPackage) clear()
     }
     fun foregroundPackage(): String?=rootInActiveWindow?.packageName?.toString()
-    fun contentBounds(): Rect? = rootInActiveWindow?.let { node -> Rect().also { node.getBoundsInScreen(it) } }
+    fun contentBounds(): Rect? = windows.filter {
+        it.type==android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION && it.root?.packageName?.toString()==CaptureService.targetPackage
+    }.map { window -> Rect().also { window.getBoundsInScreen(it) } }.maxByOrNull { it.width().toLong()*it.height() }
     fun display(bitmap: Bitmap, capturedWidth: Int, capturedHeight: Int, config: Config) {
         val bounds=contentBounds()
         if(bounds==null || bounds.isEmpty || foregroundPackage()!=CaptureService.targetPackage) { bitmap.recycle(); clear(); return }
@@ -31,10 +41,10 @@ class MaskAccessibilityService: AccessibilityService() {
         val view=mask ?: MaskView(this).also {
             val p=WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT)
             p.gravity=Gravity.TOP or Gravity.LEFT; p.setFitInsetsTypes(0)
+            p.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             wm.addView(it,p); mask=it
         }
-        val location=IntArray(2); view.getLocationOnScreen(location)
-        view.destination=RectF(bounds).apply { offset((config.offsetX-location[0]).toFloat(),(config.offsetY-location[1]).toFloat()) }
+        view.destination=RectF(bounds).apply { offset(config.offsetX.toFloat(),config.offsetY.toFloat()) }
         view.bitmap=bitmap
     }
     fun clear() { mask?.bitmap=null }

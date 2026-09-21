@@ -19,6 +19,7 @@ class MainActivity: Activity() {
     private lateinit var root: LinearLayout
     private lateinit var content: LinearLayout
     private var tab="Home"
+    private var displayedActive=false
     private var statusView: TextView?=null
     private var statsView: TextView?=null
     private val handler=Handler(Looper.getMainLooper())
@@ -30,12 +31,14 @@ class MainActivity: Activity() {
     private var exportLabel: TextView?=null
     private var preview: ImageView?=null
     private val ticker=object: Runnable { override fun run() {
+        if(tab=="Home" && displayedActive!=LiveState.active) { displayedActive=LiveState.active; draw() }
         statusView?.text=LiveState.status
         val seconds=if(LiveState.active) (SystemClock.elapsedRealtime()-LiveState.started)/1000 else 0
         statsView?.text="${LiveState.blocks} blocks     %02d:%02d session\n${LiveState.boxes} regions  ·  ${LiveState.inferenceMs} ms  ·  %.1f FPS".format(seconds/60,seconds%60,LiveState.fps)
         handler.postDelayed(this,1000)
     } }
     override fun onCreate(state: Bundle?) { super.onCreate(state); store=Store(this); tab=state?.getString("tab") ?: "Home"; draw(); handler.post(ticker) }
+    override fun onResume() { super.onResume(); if(::store.isInitialized) draw() }
     override fun onSaveInstanceState(out: Bundle) { out.putString("tab",tab); super.onSaveInstanceState(out) }
     private fun change(f: (Config)->Config) { store.save(f(store.config())) }
     private fun notify(s: String) { Toast.makeText(this,s,Toast.LENGTH_LONG).show() }
@@ -116,7 +119,7 @@ class MainActivity: Activity() {
         text.addView(Ui.button(this,"Edit custom phrases") { val input=EditText(this).apply { setText(store.config().phrases); minLines=3; hint="One phrase per line" }; AlertDialog.Builder(this).setTitle("Custom phrases").setView(input).setPositiveButton("Save") { _,_ -> change { it.copy(phrases=input.text.toString().take(2000)) } }.setNegativeButton("Cancel",null).show() })
         text.addView(Ui.button(this,"Import custom image (${c.images.size} enabled)") { pick("image/*",102,false) })
         val assets=filesDir.listFiles()?.filter { it.name.startsWith("asset_") && it.name.endsWith(".png") }.orEmpty()
-        assets.take(20).forEachIndexed { i,f -> Ui.toggle(text,"Image ${i+1} · ${f.name.takeLast(12)}",f.name in c.images) { on -> change { it.copy(images=if(on) (it.images+f.name).distinct() else it.images-f.name) } } }
+        assets.forEachIndexed { i,f -> Ui.toggle(text,"Image ${i+1} · ${f.name.takeLast(12)}",f.name in c.images) { on -> change { it.copy(images=if(on) (it.images+f.name).distinct().takeLast(20) else it.images-f.name) } } }
         Categories.groups.forEach { (group,ids) ->
             val panel=Ui.card(content,group)
             if(group=="FACES & EYES") Ui.toggle(panel,"All faces",1 in c.enabled && 12 in c.enabled) { on -> change { it.copy(enabled=if(on) it.enabled+setOf(1,12) else it.enabled-setOf(1,12)) }; draw() }

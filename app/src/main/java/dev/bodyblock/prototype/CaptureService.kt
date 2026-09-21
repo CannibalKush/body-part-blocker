@@ -25,8 +25,10 @@ class CaptureService: Service() {
     private var renderer: EffectRenderer?=null
     private val tracker=Tracker()
     private var lastFrame=0L
-    private var visible=true
+    private var visible=false
+    private val launcherPackage by lazy { packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),0)?.activityInfo?.packageName }
     private var generation=0
+    private var trackerGeneration=-1
     private var captureWidth=1; private var captureHeight=1
     private lateinit var store: Store
     private var stopping=false
@@ -72,7 +74,7 @@ class CaptureService: Service() {
         val image=runCatching { r.acquireLatestImage() }.getOrNull() ?: return
         val now=SystemClock.elapsedRealtime(); val c=store.config(); val accessibility=MaskAccessibilityService.instance
         val foreground=accessibility?.foregroundPackage()
-        if(targetPackage==null && foreground!=null && foreground!=packageName && !foreground.startsWith("com.android.systemui") && !foreground.contains("launcher")) targetPackage=foreground
+        if(visible && targetPackage==null && foreground!=null && foreground !in setOf(packageName,launcherPackage,"com.android.systemui","com.android.permissioncontroller","com.google.android.permissioncontroller")) targetPackage=foreground
         if(stopping || !visible || foreground!=targetPackage || targetPackage==null || now-lastFrame<c.intervalMs || !busy.compareAndSet(false,true)) { image.close(); return }
         val frameGeneration=generation; val cw=captureWidth; val ch=captureHeight
         val bitmap: Bitmap
@@ -89,6 +91,7 @@ class CaptureService: Service() {
                 val engine=detector ?: Detector(this).also { detector=it }
                 val effects=renderer ?: EffectRenderer(this).also { renderer=it }
                 val started=SystemClock.elapsedRealtime()
+                if(trackerGeneration!=frameGeneration) { tracker.clear(); trackerGeneration=frameGeneration }
                 val (boxes,fresh)=tracker.update(engine.detect(bitmap,c))
                 val overlay=effects.render(bitmap,boxes,c)
                 val elapsed=SystemClock.elapsedRealtime()-started

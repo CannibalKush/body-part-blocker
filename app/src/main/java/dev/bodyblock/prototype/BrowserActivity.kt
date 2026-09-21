@@ -27,11 +27,13 @@ open class BrowserActivity: Activity() {
     private var selected=0
     private val handler=Handler(Looper.getMainLooper())
     private val worker=Executors.newSingleThreadExecutor()
+    private val downloads=Executors.newSingleThreadExecutor()
     private val busy=AtomicBoolean(false)
     private var detector: Detector?=null
     private var renderer: EffectRenderer?=null
     private var currentMask: Bitmap?=null
     private var generation=0
+    private var trackerGeneration=-1
     private var foreground=false
     private var closed=false
     private var filtering=true
@@ -40,7 +42,7 @@ open class BrowserActivity: Activity() {
     private val scan=object: Runnable { override fun run() { if(foreground && filtering) capture(); handler.postDelayed(this,config.intervalMs) } }
     private val current get()=tabs.getOrNull(selected)
     override fun onCreate(saved: Bundle?) {
-        if(privateMode) WebView.setDataDirectorySuffix("private")
+        if(privateMode && !privateWebViewInitialized) { WebView.setDataDirectorySuffix("private"); privateWebViewInitialized=true }
         super.onCreate(saved)
         if(privateMode) { CookieManager.getInstance().removeAllCookies(null); WebStorage.getInstance().deleteAllData() }
         store=Store(this); config=runCatching { Config.parse(JSONObject(intent.getStringExtra("config") ?: "{}")) }.getOrDefault(Config())
@@ -128,6 +130,7 @@ open class BrowserActivity: Activity() {
             try {
                 val started=SystemClock.elapsedRealtime()
                 val engine=detector ?: Detector(this).also { detector=it }; val effects=renderer ?: EffectRenderer(this).also { renderer=it }
+                if(trackerGeneration!=g) { tracker.clear(); trackerGeneration=g }
                 val (boxes,fresh)=tracker.update(engine.detect(bitmap,snapshot)); val mask=effects.render(bitmap,boxes,snapshot)
                 val ms=SystemClock.elapsedRealtime()-started
                 runOnUiThread {
@@ -166,32 +169,61 @@ open class BrowserActivity: Activity() {
         if(!url.startsWith("https://")) { toast("This prototype saves HTTPS images only"); return }
         toast("Processing image locally…")
         val c=config
-        worker.execute {
-            var source: Bitmap?=null; var mask: Bitmap?=null; var output: Bitmap?=null
+        val userAgent=current?.settings?.userAgentString.orEmpty()
+        val referer=current?.url
+        downloads.execute {
             try {
-                val connection=URL(url).openConnection() as HttpURLConnection
-                connection.connectTimeout=15000; connection.readTimeout=15000
-                val bytes=try { require(connection.responseCode in 200..299) { "Download failed (${connection.responseCode})" }; connection.inputStream.use { input -> val out=java.io.ByteArrayOutputStream(); val buffer=ByteArray(8192); while(true) { val n=input.read(buffer); if(n<0) break; require(out.size()+n<=30*1024*1024) { "Image exceeds 30 MB" }; out.write(buffer,0,n) }; out.toByteArray() } } finally { connection.disconnect() }
-                source=MediaFiles.decode(bytes)
-                val engine=detector ?: Detector(this).also { detector=it }; val effects=renderer ?: EffectRenderer(this).also { renderer=it }
-                mask=effects.render(source,engine.detect(source,c),c); output=source.copy(Bitmap.Config.ARGB_8888,true); Canvas(output).drawBitmap(mask,0f,0f,null)
-                MediaFiles.save(this,output); if(!privateMode) store.event("exports")
-                runOnUiThread { toast("Censored image saved to Pictures/BodyBlock") }
-            } catch(e: Exception) { runOnUiThread { toast("Image not saved: ${e.message}") } }
-            finally { source?.recycle(); mask?.recycle(); output?.recycle() }
+                val bytes=downloadImage(url,userAgent,referer)
+                runOnUiThread { if(!closed) worker.execute { saveDownloadedImage(bytes,c) } }
+            } catch(e: Exception) { runOnUiThread { if(!closed) toast("Image not saved: ${e.message}") } }
         }
+    }
+    private fun saveDownloadedImage(bytes: ByteArray,c: Config) {
+        var source: Bitmap?=null; var mask: Bitmap?=null; var output: Bitmap?=null
+        try {
+            source=MediaFiles.decode(bytes)
+            val engine=detector ?: Detector(this).also { detector=it }; val effects=renderer ?: EffectRenderer(this).also { renderer=it }
+            mask=effects.render(source,engine.detect(source,c),c); output=source.copy(Bitmap.Config.ARGB_8888,true); Canvas(output).drawBitmap(mask,0f,0f,null)
+            MediaFiles.save(this,output); if(!privateMode) store.event("exports")
+            runOnUiThread { if(!closed) toast("Censored image saved to Pictures/BodyBlock") }
+        } catch(e: Exception) { runOnUiThread { if(!closed) toast("Image not saved: ${e.message}") } }
+        finally { source?.recycle(); mask?.recycle(); output?.recycle() }
+    }
+    private fun downloadImage(initial: String,userAgent: String,referer: String?): ByteArray {
+        var destination=URL(initial)
+        repeat(6) {
+            require(destination.protocol=="https") { "Only HTTPS image downloads are supported" }
+            val connection=destination.openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects=false; connection.connectTimeout=15000; connection.readTimeout=15000
+            connection.setRequestProperty("User-Agent",userAgent)
+            CookieManager.getInstance().getCookie(destination.toString())?.let { connection.setRequestProperty("Cookie",it) }
+            if(referer!=null && Uri.parse(referer).host==destination.host) connection.setRequestProperty("Referer",referer)
+            try {
+                val code=connection.responseCode
+                if(code in 300..399) { destination=URL(destination,connection.getHeaderField("Location") ?: error("Missing redirect")) }
+                else {
+                    require(code in 200..299) { "Download failed ($code)" }
+                    return connection.inputStream.use { input ->
+                        val out=java.io.ByteArrayOutputStream(); val buffer=ByteArray(8192)
+                        while(true) { val n=input.read(buffer); if(n<0) break; require(out.size()+n<=30*1024*1024) { "Image exceeds 30 MB" }; out.write(buffer,0,n) }
+                        out.toByteArray()
+                    }
+                }
+            } finally { connection.disconnect() }
+        }
+        error("Too many image redirects")
     }
     private fun toast(s: String) { Toast.makeText(this,s,Toast.LENGTH_LONG).show() }
     override fun onResume() { super.onResume(); foreground=true; current?.onResume() }
     override fun onPause() { foreground=false; clearMask(); current?.onPause(); super.onPause() }
     @Deprecated("Platform navigation") override fun onBackPressed() { if(current?.canGoBack()==true) current?.goBack() else super.onBackPressed() }
     override fun onDestroy() {
-        closed=true; handler.removeCallbacksAndMessages(null); clearMask()
+        closed=true; downloads.shutdownNow(); handler.removeCallbacksAndMessages(null); clearMask()
         tabs.forEach { it.stopLoading(); if(privateMode) { it.clearCache(true); it.clearHistory(); it.clearFormData() }; it.destroy() }
         if(privateMode) { CookieManager.getInstance().removeAllCookies(null); CookieManager.getInstance().flush(); WebStorage.getInstance().deleteAllData() }
         worker.execute { detector?.close(); renderer?.close() }; worker.shutdown()
         super.onDestroy()
     }
-    companion object { val blockedDomains=setOf("doubleclick.net","googlesyndication.com","googleadservices.com","adnxs.com","adsystem.com","amazon-adsystem.com","taboola.com","outbrain.com","scorecardresearch.com") }
+    companion object { private var privateWebViewInitialized=false; val blockedDomains=setOf("doubleclick.net","googlesyndication.com","googleadservices.com","adnxs.com","adsystem.com","amazon-adsystem.com","taboola.com","outbrain.com","scorecardresearch.com") }
 }
 class PrivateBrowserActivity: BrowserActivity()

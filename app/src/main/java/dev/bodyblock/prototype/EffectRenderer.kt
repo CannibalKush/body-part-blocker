@@ -14,7 +14,8 @@ class EffectRenderer(private val context: Context) {
         val result=Bitmap.createBitmap(source.width,source.height,Bitmap.Config.ARGB_8888)
         val canvas=Canvas(result)
         val bounds=RectF(0f,0f,source.width.toFloat(),source.height.toFloat())
-        val regions=boxes.map { b ->
+        val regions=boxes.mapIndexed { index, original ->
+            val b=if(original.id==0L) original.copy(id=index.toLong()+1) else original
             val px=b.width*config.padding/100f; val py=b.height*config.padding/100f
             RectF(max(0f,b.left-px),max(0f,b.top-py),min(bounds.right,b.right+px),min(bounds.bottom,b.bottom+py)) to b
         }
@@ -44,7 +45,7 @@ class EffectRenderer(private val context: Context) {
             }
             "Custom image" -> {
                 canvas.drawRect(r,paint)
-                val name=c.images.getOrNull((id.mod(max(1,c.images.size))).toInt())
+                val name=c.images.getOrNull(Random(id.toInt()*1103515245).nextInt(max(1,c.images.size)))
                 val image=name?.let { n -> images[n] ?: BitmapFactory.decodeFile(File(context.filesDir,n).path)?.also { images[n]=it } }
                 if(image!=null) { paint.isFilterBitmap=true; canvas.drawBitmap(image,null,r,paint) }
             }

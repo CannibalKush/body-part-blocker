@@ -1,6 +1,6 @@
 # Body Part Blocker — Android product specification
 
-Status: specification only; no implementation started.
+Status: target specification. An Android prototype is implemented; see README.md and VALIDATION.md for delivered scope and evidence.
 Date: 2026-09-21.
 
 ## Objective and scope
@@ -192,4 +192,4 @@ Reviewed on 2026-09-21:
 
 ## Implementation status
 
-Specification only. No application code, dependencies, build configuration, remote repository, or implementation commitments are included.
+Android prototype implemented locally. See README.md for build/install instructions and remaining parity gaps, and VALIDATION.md for checks. No remote repository or publication has been created.
