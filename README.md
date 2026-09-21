@@ -20,7 +20,7 @@ The Accessibility service draws masks and reads window geometry. It does not dis
 | --- | --- |
 | Detection | All 18 NudeNet body/face categories; all-faces shortcut; bundled eye landmarks; confidence and padding controls |
 | Live app mode | MediaProjection single-app capture, opaque Accessibility overlays, category filtering, tracking, calibration, resize/visibility handling, notification stop |
-| Effects | Solid, fast blur, pixelation, custom images, static, glitch, tape, error popup; colours, borders, text and animation |
+| Effects | Solid, fast blur, pixelation, custom images, static, glitch, tape, error popup; colours, borders, Yes/No/Part mask text (category and available confidence), and animation |
 | Reverse mode | Obscure the background and leave selected detected regions visible; strength control; no detection covers the whole content area |
 | Profiles | Named configurations, save/load/delete, custom image pool, phrase sets and timing |
 | Packs | BodyBlock JSON + image ZIP import/export with version, path, entry-count and decompression-size validation |

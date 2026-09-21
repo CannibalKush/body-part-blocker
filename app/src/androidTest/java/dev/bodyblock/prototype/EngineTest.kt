@@ -29,7 +29,7 @@ class EngineTest {
         val boxes=listOf(Box(20f,20f,60f,60f,1,1f))
         val renderer=EffectRenderer(context)
         for(style in Config.styles) {
-            val c=Config(style=style,padding=0,border="None",showText=false)
+            val c=Config(style=style,padding=0,border="None",maskText="No")
             val normal=renderer.render(source,boxes,c)
             assertEquals("$style outside",0,Color.alpha(normal.getPixel(5,5)))
             assertEquals("$style inside",255,Color.alpha(normal.getPixel(40,40)))
@@ -43,7 +43,7 @@ class EngineTest {
     @Test fun exportedImageHasPermanentMasks() {
         val source=Bitmap.createBitmap(80,80,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
         val renderer=EffectRenderer(context)
-        val mask=renderer.render(source,listOf(Box(20f,20f,60f,60f,1,1f)),Config(color=Color.BLACK,padding=0,border="None",showText=false))
+        val mask=renderer.render(source,listOf(Box(20f,20f,60f,60f,1,1f)),Config(color=Color.BLACK,padding=0,border="None",maskText="No"))
         Canvas(source).drawBitmap(mask,0f,0f,null)
         val uri=MediaFiles.save(context,source)
         try {

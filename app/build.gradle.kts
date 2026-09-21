@@ -6,8 +6,8 @@ android {
         applicationId = "dev.bodyblock.prototype"
         minSdk = 35
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1-prototype"
+        versionCode = 3
+        versionName = "0.1.2-prototype"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

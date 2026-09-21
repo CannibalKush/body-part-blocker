@@ -26,10 +26,16 @@ class EffectRenderer(private val context: Context) {
             }
             val clear=Paint().apply { xfermode=PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
             regions.forEach { canvas.drawRect(it.first,clear) }
-        } else regions.forEach { (r,b) -> drawEffect(canvas,source,r,config,b.id,time) }
+        } else regions.forEach { (r,b) -> drawEffect(canvas,source,r,config,b.id,time,b) }
         return result
     }
-    private fun drawEffect(canvas: Canvas, source: Bitmap, r: RectF, c: Config, id: Long, time: Long) {
+    internal fun partLabel(box: Box?): String {
+        if(box==null) return ""
+        val label=Categories.labels.getOrNull(box.category) ?: return ""
+        // Eye landmarks have no confidence score; the detector's 1f is a placeholder.
+        return if(box.category==18 || !box.score.isFinite()) label else "$label · ${(box.score.coerceIn(0f,1f)*100).roundToInt()}%"
+    }
+    private fun drawEffect(canvas: Canvas, source: Bitmap, r: RectF, c: Config, id: Long, time: Long, box: Box? = null) {
         if(r.width()<1 || r.height()<1) return
         canvas.save(); canvas.clipRect(r)
         val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=c.color }
@@ -79,9 +85,9 @@ class EffectRenderer(private val context: Context) {
             paint.strokeWidth=if(c.border=="Glow") 5f else 2f
             canvas.drawRoundRect(r,5f,5f,paint); paint.style=Paint.Style.FILL
         }
-        if(c.showText && r.width()>30 && r.height()>20) {
+        if(c.maskText!="No" && r.width()>30 && r.height()>20) {
             val phrases=when(c.phraseCategory) { "Minimal" -> listOf("HIDDEN","PROTECTED"); "Playful" -> listOf("NOT TODAY","NICE TRY","LOOK AWAY"); else -> c.phrases.lines().filter { it.isNotBlank() } }
-            val text=phrases.getOrNull(((id+time/(1000*c.phraseSeconds)).mod(max(1,phrases.size))).toInt()).orEmpty().take(80)
+            val text=if(c.maskText=="Part") partLabel(box) else phrases.getOrNull(((id+time/(1000*c.phraseSeconds)).mod(max(1,phrases.size))).toInt()).orEmpty().take(80)
             if(text.isNotEmpty()) {
                 paint.reset(); paint.isAntiAlias=true; paint.color=Color.WHITE; paint.typeface=Typeface.create("sans-serif-condensed",Typeface.BOLD)
                 paint.textSize=min(22f,r.height()*.22f); paint.textAlign=Paint.Align.CENTER

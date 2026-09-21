@@ -61,6 +61,9 @@ class CaptureService: Service() {
     }
     private fun resize(w: Int,h: Int) {
         if(w<=0 || h<=0) return
+        // Some devices repeat this callback after a surface is attached. Recreating an
+        // unchanged reader feeds that callback back into itself and starves inference.
+        if(reader!=null && w==captureWidth && h==captureHeight) return
         generation++; MaskAccessibilityService.instance?.clear()
         display?.surface=null; reader?.close(); prepareReader(w,h)
         display?.resize(reader!!.width,reader!!.height,resources.displayMetrics.densityDpi); display?.surface=reader!!.surface

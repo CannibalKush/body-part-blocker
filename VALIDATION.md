@@ -11,7 +11,7 @@ Date: 2026-09-21. Device environment: clean Android 15 / API 35 ARM64 emulator (
 
 ## Instrumented checks
 
-Seven device tests cover:
+Eight device tests cover:
 
 1. Bundled ONNX model detects a face in the NASA fixture; bundled ML Kit produces eye landmarks.
 2. All eight effects produce opaque masks inside selected regions and transparent pixels outside; reverse mode preserves selected holes.
@@ -20,6 +20,7 @@ Seven device tests cover:
 5. Home, Settings, Export, Help and Browser navigation; private browser closes and reopens without crashing.
 6. Actual single-app MediaProjection capture of a separate test-gallery APK, nonzero detections, correct selected package, a pixel assertion that the mask covers the known face location, touch-through operation, and clean stop.
 7. Browser viewport detection of an embedded face fixture.
+8. Repeated captured-content size callbacks retain the existing ImageReader; an actual orientation change replaces it.
 
 The four engine tests are also run with emulator Wi-Fi and mobile data disabled to check offline operation. This is not a full network audit of third-party SDKs.
 
@@ -53,3 +54,17 @@ Screenshots under ignored `artifacts/screenshots/latest/` show Home, Settings, B
 - Original-app binary/pack compatibility or exact achievement/effect parity.
 
 See README.md for explicit feature gaps and installation instructions.
+
+## Android 16 physical-device capture fix (0.1.1)
+
+On a Samsung SM-S711B running Android 16, Reddit capture repeatedly recreated an unchanged 1024x2219 ImageReader: 73 new abandoned readers in three seconds. The accessibility service and MediaProjection were connected, but no inference frames completed. Duplicate resize callbacks now leave the existing capture surface intact.
+
+The regression test failed before the fix and passed afterward. All eight emulator instrumentation tests, JVM tests, debug build, and lint passed. The updated APK was installed over the existing phone app, preserving its data. Physical-device retesting requires restarting protection after installation; successful Reddit masking is not yet confirmed.
+
+The read-only `scripts/check-capture-buffer.py --serial SERIAL --adb PATH` checks buffer churn without capturing screen pixels.
+
+## Mask text selection (0.1.2)
+
+Replaced the text toggle with Yes / No / Part. Legacy boolean preferences and profiles migrate to the matching mode. Part uses the shared renderer for capture, browser, and exports, with detector confidence as a percentage; eye landmarks omit confidence because none is supplied. Reverse mode has no individual masked category, so Part adds no label there.
+
+Debug APK build, JVM tests, lint, and a dedicated emulator check passed. The check covers legacy preference migration, profile round-trip, category/confidence labels, and differing rendered pixels for all three modes.

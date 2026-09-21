@@ -18,7 +18,7 @@ data class Config(
     val reverse: Boolean = false, val reverseStrength: Int = 100,
     val confidence: Int = 30, val padding: Int = 12, val preset: String = "Medium",
     val phrases: String = "PROTECTED\nCONTENT HIDDEN", val phraseCategory: String = "Custom",
-    val phraseSeconds: Int = 4, val showText: Boolean = true, val animate: Boolean = true,
+    val phraseSeconds: Int = 4, val maskText: String = "Yes", val animate: Boolean = true,
     val diagnostics: Boolean = false, val images: List<String> = emptyList(),
     val adBlock: Boolean = true, val offsetX: Int = 0, val offsetY: Int = 0
 ) {
@@ -26,7 +26,7 @@ data class Config(
         put("enabled", JSONArray(enabled.sorted())); put("style", style); put("intensity", intensity)
         put("color", color); put("border", border); put("reverse", reverse); put("reverseStrength", reverseStrength)
         put("confidence", confidence); put("padding", padding); put("preset", preset); put("phrases", phrases)
-        put("phraseCategory", phraseCategory); put("phraseSeconds", phraseSeconds); put("showText", showText)
+        put("phraseCategory", phraseCategory); put("phraseSeconds", phraseSeconds); put("maskText", maskText)
         put("animate", animate); put("diagnostics", diagnostics); put("images", JSONArray(images))
         put("adBlock", adBlock); put("offsetX", offsetX); put("offsetY", offsetY)
     }
@@ -44,7 +44,7 @@ data class Config(
                 o.optInt("confidence",30).coerceIn(10,95), o.optInt("padding",12).coerceIn(0,50),
                 o.optString("preset","Medium").takeIf { it in listOf("Low","Medium","High","Ultra") } ?: "Medium",
                 o.optString("phrases",d.phrases).take(2000), o.optString("phraseCategory","Custom"),
-                o.optInt("phraseSeconds",4).coerceIn(1,30), o.optBoolean("showText",true), o.optBoolean("animate",true),
+                o.optInt("phraseSeconds",4).coerceIn(1,30), o.optString("maskText",if(o.optBoolean("showText",true)) "Yes" else "No").takeIf { it in listOf("Yes","No","Part") } ?: "Yes", o.optBoolean("animate",true),
                 o.optBoolean("diagnostics"), o.optJSONArray("images")?.let { a -> (0 until a.length().coerceAtMost(20)).map { a.getString(it) }.filter { it.matches(Regex("asset_[a-zA-Z0-9_-]+\\.png")) } } ?: emptyList(),
                 o.optBoolean("adBlock",true), o.optInt("offsetX",0).coerceIn(-150,150), o.optInt("offsetY",0).coerceIn(-150,150)
             )

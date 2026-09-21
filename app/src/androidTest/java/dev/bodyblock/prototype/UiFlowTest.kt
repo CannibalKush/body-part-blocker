@@ -36,7 +36,7 @@ class UiFlowTest {
         device.pressBack()
     }
     @Test fun browserFiltersVisibleImage() {
-        val activity=instrumentation.startActivitySync(Intent(context,BrowserActivity::class.java).putExtra("config",Config(enabled=setOf(1,12),showText=false).json().toString()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        val activity=instrumentation.startActivitySync(Intent(context,BrowserActivity::class.java).putExtra("config",Config(enabled=setOf(1,12),maskText="No").json().toString()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         val bytes=instrumentation.context.assets.open("astronaut.png").use { it.readBytes() }
         val data=android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)
         fun findWeb(v: android.view.View): android.webkit.WebView? {

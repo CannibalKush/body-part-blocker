@@ -113,7 +113,7 @@ class MainActivity: Activity() {
         Ui.slider(appearance,"Reverse strength",c.reverseStrength,1,100) { v -> change { it.copy(reverseStrength=v) } }
         appearance.addView(Ui.button(this,"Preview current effect") { effectPreview() })
         val text=Ui.card(content,"WORDS & CUSTOM IMAGES")
-        Ui.toggle(text,"Show text on masks",c.showText) { v -> change { it.copy(showText=v) } }
+        Ui.select(text,"Text on masks",listOf("Yes","No","Part"),c.maskText) { v -> change { it.copy(maskText=v) } }
         Ui.select(text,"Phrase category",listOf("Custom","Minimal","Playful"),c.phraseCategory) { v -> change { it.copy(phraseCategory=v) } }
         Ui.slider(text,"Text change · seconds",c.phraseSeconds,1,30) { v -> change { it.copy(phraseSeconds=v) } }
         text.addView(Ui.button(this,"Edit custom phrases") { val input=EditText(this).apply { setText(store.config().phrases); minLines=3; hint="One phrase per line" }; AlertDialog.Builder(this).setTitle("Custom phrases").setView(input).setPositiveButton("Save") { _,_ -> change { it.copy(phrases=input.text.toString().take(2000)) } }.setNegativeButton("Cancel",null).show() })
